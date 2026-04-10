@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barrel Bears</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: #111;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: 'Courier New', monospace;
+        color: #fff;
+        overflow: hidden;
+    }
+    canvas {
+        border: 2px solid #444;
+        cursor: none;
+        display: block;
+    }
+    #ui {
+        width: 640px;
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        font-size: 18px;
+    }
+    #start-screen {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+    }
+    #start-screen h1 { font-size: 48px; color: #D4A843; }
+    #start-screen p { font-size: 16px; color: #aaa; }
+    #box-art-container {
+        margin-bottom: 12px;
+        border: 3px solid #444;
+        box-shadow: 0 0 30px rgba(212, 168, 67, 0.3), 0 4px 20px rgba(0,0,0,0.5);
+        border-radius: 4px;
+        overflow: hidden;
+        background: #000;
+    }
+    #box-art {
+        display: block;
+        max-width: 320px;
+        max-height: 300px;
+        width: auto;
+        height: auto;
+    }
+    .has-box-art #splash-title { display: none; }
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+    <span>SCORE: <span id="score">0</span></span>
+    <span>BARRELS LEFT: <span id="lives">3</span></span>
+    <span>LEVEL: <span id="level">1</span></span>
+</div>
+<canvas id="game" width="640" height="480"></canvas>
+
+<div id="start-screen">
+    <div id="box-art-container" class="hidden">
+        <img id="box-art" src="" alt="Barrel Bears Box Art">
+    </div>
+    <h1 id="splash-title">BARREL BEARS</h1>
+    <p>Move your mouse to catch the falling cubs!</p>
+    <p>Click to start — Press R to restart anytime</p>
+</div>
+
+<script>
+// =============================================================
+// CUSTOMIZATION — Swap these with your own assets
+// =============================================================
+// Set to null to use default drawn graphics
+// Images should be PNG with transparency recommended
+const CUSTOM_ASSETS = {
+    mamaBearImage: null,  // e.g. 'assets/mama-bear.png' (64x48) — moves along the top
+    cubImage: null,       // e.g. 'assets/cub.png' (20x20) — the falling cubs
+    barrelImage: null,    // e.g. 'assets/barrel.png' (80x24) — player-controlled catcher
+    backgroundImage: null,// e.g. 'assets/background.png' (640x480) — forest scene
+    boxArtImage: null,    // e.g. 'assets/box-art.png' — shown on splash screen
+
+    // Sounds — set to audio file paths (mp3, wav, ogg)
+    catchSound: null,     // e.g. 'assets/catch.mp3' — cub safely caught
+    missSound: null,      // e.g. 'assets/miss.mp3' — cub missed
+    levelUpSound: null,   // e.g. 'assets/levelup.mp3'
+    gameOverSound: null,  // e.g. 'assets/gameover.mp3'
+    backgroundMusic: null,// e.g. 'assets/music.mp3' — loops continuously
+};
+// =============================================================
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const levelEl = document.getElementById('level');
+const startScreen = document.getElementById('start-screen');
+
+// Load custom assets
+const images = {};
+const sounds = {};
+
+function loadImage(key, src) {
+    return new Promise(resolve => {
+        if (!src) return resolve();
+        const img = new Image();
+        img.onload = () => { images[key] = img; resolve(); };
+        img.onerror = () => resolve();
+        img.src = src;
+    });
+}
+
+function loadSound(key, src) {
+    if (!src) return;
+    sounds[key] = new Audio(src);
+    sounds[key].volume = 0.5;
+}
+
+function loadMusic(src) {
+    if (!src) return;
+    sounds.music = new Audio(src);
+    sounds.music.loop = true;
+    sounds.music.volume = 0.3;
+}
+
+function startMusic() {
+    if (sounds.music && sounds.music.paused) {
+        sounds.music.play().catch(() => {});
+    }
+}
+
+function stopMusic() {
+    if (sounds.music) {
+        sounds.music.pause();
+        sounds.music.currentTime = 0;
+    }
+}
+
+function playSound(key) {
+    if (sounds[key]) {
+        sounds[key].currentTime = 0;
+        sounds[key].play().catch(() => {});
+    }
+}
+
+// Game state
+let game = {};
+
+function initGame() {
+    game = {
+        running: false,
+        over: false,
+        score: 0,
+        lives: 3,
+        level: 1,
+        mamaBear: { x: 80, dir: 1, speed: 2, width: 64, height: 48 },
+        barrelX: W / 2,
+        barrelWidth: 80,
+        barrelHeight: 24,
+        barrelY: H - 80,
+        cubs: [],
+        cubTimer: 0,
+        cubInterval: 60,
+        cubSpeed: 3,
+        cubRadius: 10,
+        catchesThisLevel: 0,
+        catchesNeeded: 10,
+        splashes: [],
+    };
+    updateUI();
+}
+
+function updateUI() {
+    scoreEl.textContent = game.score;
+    livesEl.textContent = game.lives;
+    levelEl.textContent = game.level;
+}
+
+function dropCub() {
+    game.cubs.push({
+        x: game.mamaBear.x + game.mamaBear.width / 2,
+        y: game.mamaBear.height + 10,
+        speed: game.cubSpeed,
+        alive: true,
+    });
+}
+
+function levelUp() {
+    game.level++;
+    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.8, 10);
+    game.cubSpeed = Math.min(game.cubSpeed + 0.6, 12);
+    game.cubInterval = Math.max(game.cubInterval - 8, 15);
+    game.catchesThisLevel = 0;
+    game.catchesNeeded = 10 + game.level * 2;
+    playSound('levelUp');
+    updateUI();
+}
+
+function addSplash(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+        game.splashes.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            life: 20 + Math.random() * 10,
+            color,
+        });
+    }
+}
+
+function update() {
+    if (!game.running || game.over) return;
+
+    const mama = game.mamaBear;
+
+    // Move mama bear
+    mama.x += mama.speed * mama.dir;
+    if (mama.x <= 0) { mama.x = 0; mama.dir = 1; }
+    if (mama.x >= W - mama.width) { mama.x = W - mama.width; mama.dir = -1; }
+
+    // Drop cubs
+    game.cubTimer++;
+    if (game.cubTimer >= game.cubInterval) {
+        game.cubTimer = 0;
+        dropCub();
+    }
+
+    // Move cubs
+    for (const cub of game.cubs) {
+        if (!cub.alive) continue;
+        cub.y += cub.speed;
+
+        // Check catch
+        const cx = cub.x;
+        const cy = cub.y;
+        const left = game.barrelX - game.barrelWidth / 2;
+        const right = game.barrelX + game.barrelWidth / 2;
+
+        if (cy >= game.barrelY && cy <= game.barrelY + game.barrelHeight &&
+            cx >= left && cx <= right) {
+            cub.alive = false;
+            game.score += 1;
+            game.catchesThisLevel++;
+            addSplash(cx, cy, '#4499ff');
+            playSound('catch');
+
+            if (game.catchesThisLevel >= game.catchesNeeded) {
+                levelUp();
+            }
+            updateUI();
+        }
+
+        // Check miss
+        if (cy > H) {
+            cub.alive = false;
+            game.lives--;
+            addSplash(cx, H - 10, '#ff4444');
+            playSound('miss');
+            updateUI();
+
+            if (game.lives <= 0) {
+                game.over = true;
+                stopMusic();
+                playSound('gameOver');
+            }
+        }
+    }
+
+    // Clean up
+    game.cubs = game.cubs.filter(c => c.alive);
+
+    // Update splashes
+    for (const s of game.splashes) {
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life--;
+    }
+    game.splashes = game.splashes.filter(s => s.life > 0);
+}
+
+function draw() {
+    // Background
+    if (images.background) {
+        ctx.drawImage(images.background, 0, 0, W, H);
+    } else {
+        // Default forest background
+        ctx.fillStyle = '#1a3a1a';
+        ctx.fillRect(0, 0, W, H);
+
+        // Trees in background
+        for (let i = 0; i < 8; i++) {
+            const tx = i * 85 + 20;
+            // Trunk
+            ctx.fillStyle = '#4a2a0a';
+            ctx.fillRect(tx + 12, 0, 16, H - 40);
+            // Foliage
+            ctx.fillStyle = '#2d5a1e';
+            ctx.beginPath();
+            ctx.arc(tx + 20, 30, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1e4a12';
+            ctx.beginPath();
+            ctx.arc(tx + 20, 55, 22, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Ground
+        ctx.fillStyle = '#3a5a2a';
+        ctx.fillRect(0, H - 40, W, 40);
+        // Grass tufts
+        ctx.fillStyle = '#4a7a3a';
+        for (let i = 0; i < 20; i++) {
+            ctx.fillRect(i * 33 + 5, H - 44, 12, 6);
+        }
+    }
+
+    if (!game.running && !game.over) return;
+
+    const mama = game.mamaBear;
+
+    // Draw mama bear
+    if (images.mamaBear) {
+        ctx.drawImage(images.mamaBear, mama.x, 8, mama.width, mama.height);
+    } else {
+        // Default mama bear
+        // Body
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.ellipse(mama.x + mama.width / 2, 32, mama.width / 2 - 4, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Head
+        ctx.fillStyle = '#7a3a0a';
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width / 2, 14, 12, 0, Math.PI * 2);
+        ctx.fill();
+        // Ears
+        ctx.fillStyle = '#6a2a00';
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width / 2 - 10, 6, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width / 2 + 10, 6, 5, 0, Math.PI * 2);
+        ctx.fill();
+        // Snout
+        ctx.fillStyle = '#D2B48C';
+        ctx.beginPath();
+        ctx.ellipse(mama.x + mama.width / 2, 18, 5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width / 2 - 5, 12, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width / 2 + 5, 12, 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Paws
+        ctx.fillStyle = '#7a3a0a';
+        ctx.beginPath();
+        ctx.arc(mama.x + 10, 48, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(mama.x + mama.width - 10, 48, 6, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw falling cubs
+    for (const cub of game.cubs) {
+        if (!cub.alive) continue;
+        if (images.cub) {
+            ctx.drawImage(images.cub, cub.x - game.cubRadius, cub.y - game.cubRadius,
+                game.cubRadius * 2, game.cubRadius * 2);
+        } else {
+            // Default cub: small round bear
+            // Body
+            ctx.fillStyle = '#B8860B';
+            ctx.beginPath();
+            ctx.arc(cub.x, cub.y, game.cubRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Ears
+            ctx.fillStyle = '#8B6508';
+            ctx.beginPath();
+            ctx.arc(cub.x - 6, cub.y - 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cub.x + 6, cub.y - 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            // Face
+            ctx.fillStyle = '#DEB887';
+            ctx.beginPath();
+            ctx.ellipse(cub.x, cub.y + 2, 4, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(cub.x - 3, cub.y - 2, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cub.x + 3, cub.y - 2, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Draw barrel
+    const bLeft = game.barrelX - game.barrelWidth / 2;
+    if (images.barrel) {
+        ctx.drawImage(images.barrel, bLeft, game.barrelY, game.barrelWidth, game.barrelHeight);
+    } else {
+        // Default barrel
+        ctx.fillStyle = '#8B5E3C';
+        ctx.beginPath();
+        ctx.moveTo(bLeft + 4, game.barrelY);
+        ctx.lineTo(bLeft + game.barrelWidth - 4, game.barrelY);
+        ctx.lineTo(bLeft + game.barrelWidth, game.barrelY + game.barrelHeight);
+        ctx.lineTo(bLeft, game.barrelY + game.barrelHeight);
+        ctx.closePath();
+        ctx.fill();
+        // Metal bands
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bLeft + 2, game.barrelY + 5);
+        ctx.lineTo(bLeft + game.barrelWidth - 2, game.barrelY + 5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bLeft + 1, game.barrelY + game.barrelHeight - 5);
+        ctx.lineTo(bLeft + game.barrelWidth - 1, game.barrelY + game.barrelHeight - 5);
+        ctx.stroke();
+        // Wood grain lines
+        ctx.strokeStyle = '#7a4e2c';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 5; i++) {
+            const lx = bLeft + i * (game.barrelWidth / 5);
+            ctx.beginPath();
+            ctx.moveTo(lx, game.barrelY + 1);
+            ctx.lineTo(lx, game.barrelY + game.barrelHeight - 1);
+            ctx.stroke();
+        }
+        // Opening (dark top)
+        ctx.fillStyle = '#3a2010';
+        ctx.fillRect(bLeft + 6, game.barrelY, game.barrelWidth - 12, 4);
+    }
+
+    // Draw splashes
+    for (const s of game.splashes) {
+        ctx.globalAlpha = s.life / 30;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Game over overlay
+    if (game.over) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#D4A843';
+        ctx.font = 'bold 48px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Courier New';
+        ctx.fillText(`Cubs Rescued: ${game.score}`, W / 2, H / 2 + 20);
+        ctx.fillText('Press R to restart', W / 2, H / 2 + 54);
+        ctx.textAlign = 'left';
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Input
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    game.barrelX = (e.clientX - rect.left) * (W / rect.width);
+});
+
+canvas.addEventListener('click', () => {
+    if (!game.running && !game.over) {
+        game.running = true;
+        startScreen.classList.add('hidden');
+        startMusic();
+    }
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'r' || e.key === 'R') {
+        initGame();
+        game.running = true;
+        startScreen.classList.add('hidden');
+        startMusic();
+    }
+});
+
+// Init
+async function init() {
+    await Promise.all([
+        loadImage('mamaBear', CUSTOM_ASSETS.mamaBearImage),
+        loadImage('cub', CUSTOM_ASSETS.cubImage),
+        loadImage('barrel', CUSTOM_ASSETS.barrelImage),
+        loadImage('background', CUSTOM_ASSETS.backgroundImage),
+        loadImage('boxArt', CUSTOM_ASSETS.boxArtImage),
+    ]);
+
+    // Show box art on splash screen if provided
+    if (images.boxArt) {
+        const boxArtEl = document.getElementById('box-art');
+        const container = document.getElementById('box-art-container');
+        boxArtEl.src = CUSTOM_ASSETS.boxArtImage;
+        container.classList.remove('hidden');
+        startScreen.classList.add('has-box-art');
+    }
+    loadSound('catch', CUSTOM_ASSETS.catchSound);
+    loadSound('miss', CUSTOM_ASSETS.missSound);
+    loadSound('levelUp', CUSTOM_ASSETS.levelUpSound);
+    loadSound('gameOver', CUSTOM_ASSETS.gameOverSound);
+    loadMusic(CUSTOM_ASSETS.backgroundMusic);
+
+    initGame();
+    gameLoop();
+}
+
+init();
+</script>
+</body>
+</html>
