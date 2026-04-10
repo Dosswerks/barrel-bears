@@ -126,18 +126,18 @@
 // Set to null to use default drawn graphics
 // Images should be PNG with transparency recommended
 const CUSTOM_ASSETS = {
-    mamaBearImage: null,  // e.g. 'assets/mama-bear.png' (64x48) — moves along the top
-    cubImage: null,       // e.g. 'assets/cub.png' (20x20) — the falling cubs
+    mamaBearImage: 'assets/bomber.png',
+    cubImage: 'assets/bomb.png',
     barrelImage: 'assets/barrel.png',
     backgroundImage: 'assets/background.png',
-    boxArtImage: 'box-art.png',    // shown on splash screen
+    boxArtImage: 'assets/box-art.png',    // shown on splash screen
 
     // Sounds — set to audio file paths (mp3, wav, ogg)
-    catchSound: null,     // e.g. 'assets/catch.mp3' — cub safely caught
-    missSound: null,      // e.g. 'assets/miss.mp3' — cub missed
-    levelUpSound: null,   // e.g. 'assets/levelup.mp3'
-    gameOverSound: null,  // e.g. 'assets/gameover.mp3'
-    backgroundMusic: null,// e.g. 'assets/music.mp3' — loops continuously
+    catchSound: 'assets/catch.mp3',
+    missSound: 'assets/miss.mp3',
+    levelUpSound: 'assets/levelup.mp3',
+    gameOverSound: 'assets/gameover.mp3',
+    backgroundMusic: 'assets/music.mp3',
 };
 // =============================================================
 
@@ -208,16 +208,16 @@ function initGame() {
         score: 0,
         lives: 3,
         level: 1,
-        mamaBear: { x: 80, dir: 1, speed: 2, width: 64, height: 48 },
+        mamaBear: { x: 80, dir: 1, speed: 1.5, width: 64, height: 48 },
         barrelX: W / 2,
         barrelWidth: 80,
         barrelHeight: 50,
         barrelY: H - 100,
         cubs: [],
         cubTimer: 0,
-        cubInterval: 60,
-        cubSpeed: 3,
-        cubRadius: 10,
+        cubInterval: 80,
+        cubSpeed: 2,
+        cubRadius: 20,
         catchesThisLevel: 0,
         catchesNeeded: 10,
         splashes: [],
@@ -242,9 +242,9 @@ function dropCub() {
 
 function levelUp() {
     game.level++;
-    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.8, 10);
-    game.cubSpeed = Math.min(game.cubSpeed + 0.6, 12);
-    game.cubInterval = Math.max(game.cubInterval - 8, 15);
+    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.5, 8);
+    game.cubSpeed = Math.min(game.cubSpeed + 0.4, 9);
+    game.cubInterval = Math.max(game.cubInterval - 5, 25);
     game.catchesThisLevel = 0;
     game.catchesNeeded = 10 + game.level * 2;
     playSound('levelUp');
