@@ -16,7 +16,8 @@
         font-family: Arial, Helvetica, sans-serif;
         font-weight: bold;
         color: #fff;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
     canvas {
         display: block;
@@ -115,10 +116,10 @@
         <p>Click or tap to start — Press R to restart</p>
     </div>
 </div>
-<div id="readme-link" style="width: 640px; max-width: 100vw; text-align: center; padding: 10px 0;">
-    <a href="story.html" target="_blank" style="color: #D4A843; font-size: 18px; text-decoration: none;">📖 READ THE STORY!</a>
-    <br>
-    <a href="https://distrokid.com/hyperfollow/andrewdoss1/music-from-karvers-korner-the-legend-of-dukes-gold" target="_blank" style="color: #D4A843; font-size: 18px; text-decoration: none;">🎵 LISTEN TO THE FULL SOUNDTRACK!</a>
+<div id="readme-link" style="width: 640px; max-width: 100vw; text-align: center; padding: 10px 0; z-index: 20; position: relative;">
+    <a href="story.html" target="_blank" style="color: #D4A843; font-size: 18px; text-decoration: none;">📖 READ THE STORY! 📖</a>
+    <br><br>
+    <a href="https://distrokid.com/hyperfollow/andrewdoss1/music-from-karvers-korner-the-legend-of-dukes-gold" target="_blank" style="color: #D4A843; font-size: 18px; text-decoration: none;">🎵 LISTEN TO THE FULL SOUNDTRACK! 🎵</a>
 </div>
 
 <script>
@@ -244,9 +245,9 @@ function dropCub() {
 
 function levelUp() {
     game.level++;
-    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.7, 9);
-    game.cubSpeed = Math.min(game.cubSpeed + 0.5, 10);
-    game.cubInterval = Math.max(game.cubInterval - 7, 20);
+    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.9, 9);
+    game.cubSpeed = Math.min(game.cubSpeed + 0.7, 11);
+    game.cubInterval = Math.max(game.cubInterval - 9, 18);
     game.catchesThisLevel = 0;
     game.catchesNeeded = 10 + game.level * 2;
     playSound('levelUp');
