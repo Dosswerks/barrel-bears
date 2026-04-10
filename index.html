@@ -128,7 +128,7 @@
 const CUSTOM_ASSETS = {
     mamaBearImage: null,  // e.g. 'assets/mama-bear.png' (64x48) — moves along the top
     cubImage: null,       // e.g. 'assets/cub.png' (20x20) — the falling cubs
-    barrelImage: null,    // e.g. 'assets/barrel.png' (80x24) — player-controlled catcher
+    barrelImage: 'assets/barrel.png',
     backgroundImage: 'assets/background.png',
     boxArtImage: 'box-art.png',    // shown on splash screen
 
@@ -211,8 +211,8 @@ function initGame() {
         mamaBear: { x: 80, dir: 1, speed: 2, width: 64, height: 48 },
         barrelX: W / 2,
         barrelWidth: 80,
-        barrelHeight: 24,
-        barrelY: H - 80,
+        barrelHeight: 50,
+        barrelY: H - 100,
         cubs: [],
         cubTimer: 0,
         cubInterval: 60,
@@ -462,38 +462,50 @@ function draw() {
         ctx.drawImage(images.barrel, bLeft, game.barrelY, game.barrelWidth, game.barrelHeight);
     } else {
         // Default barrel
+        const bw = game.barrelWidth;
+        const bh = game.barrelHeight;
+        const by = game.barrelY;
+        const cx = bLeft + bw / 2;
+        const bulge = 6;
+
+        // Barrel body (curved sides)
         ctx.fillStyle = '#8B5E3C';
         ctx.beginPath();
-        ctx.moveTo(bLeft + 4, game.barrelY);
-        ctx.lineTo(bLeft + game.barrelWidth - 4, game.barrelY);
-        ctx.lineTo(bLeft + game.barrelWidth, game.barrelY + game.barrelHeight);
-        ctx.lineTo(bLeft, game.barrelY + game.barrelHeight);
+        ctx.moveTo(bLeft + 4, by);
+        ctx.quadraticCurveTo(bLeft - bulge, by + bh / 2, bLeft + 4, by + bh);
+        ctx.lineTo(bLeft + bw - 4, by + bh);
+        ctx.quadraticCurveTo(bLeft + bw + bulge, by + bh / 2, bLeft + bw - 4, by);
         ctx.closePath();
         ctx.fill();
-        // Metal bands
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bLeft + 2, game.barrelY + 5);
-        ctx.lineTo(bLeft + game.barrelWidth - 2, game.barrelY + 5);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(bLeft + 1, game.barrelY + game.barrelHeight - 5);
-        ctx.lineTo(bLeft + game.barrelWidth - 1, game.barrelY + game.barrelHeight - 5);
-        ctx.stroke();
+
         // Wood grain lines
         ctx.strokeStyle = '#7a4e2c';
         ctx.lineWidth = 1;
         for (let i = 1; i < 5; i++) {
-            const lx = bLeft + i * (game.barrelWidth / 5);
+            const lx = bLeft + i * (bw / 5);
             ctx.beginPath();
-            ctx.moveTo(lx, game.barrelY + 1);
-            ctx.lineTo(lx, game.barrelY + game.barrelHeight - 1);
+            ctx.moveTo(lx, by + 2);
+            ctx.lineTo(lx, by + bh - 2);
             ctx.stroke();
         }
-        // Opening (dark top)
+
+        // Metal bands
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(bLeft, by + 8);
+        ctx.quadraticCurveTo(cx, by + 6, bLeft + bw, by + 8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bLeft, by + bh - 8);
+        ctx.quadraticCurveTo(cx, by + bh - 6, bLeft + bw, by + bh - 8);
+        ctx.stroke();
+
+        // Opening (dark oval top)
         ctx.fillStyle = '#3a2010';
-        ctx.fillRect(bLeft + 6, game.barrelY, game.barrelWidth - 12, 4);
+        ctx.beginPath();
+        ctx.ellipse(cx, by + 4, bw / 2 - 8, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     // Draw splashes
