@@ -13,7 +13,8 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        font-family: 'Courier New', monospace;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
         color: #fff;
         overflow: hidden;
     }
@@ -482,11 +483,11 @@ function draw() {
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = '#D4A843';
-        ctx.font = 'bold 48px Courier New';
+        ctx.font = 'bold 48px Arial, Helvetica, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
         ctx.fillStyle = '#fff';
-        ctx.font = '20px Courier New';
+        ctx.font = 'bold 20px Arial, Helvetica, sans-serif';
         ctx.fillText(`Cubs Rescued: ${game.score}`, W / 2, H / 2 + 20);
         ctx.fillText('Tap or press R to restart', W / 2, H / 2 + 54);
         ctx.textAlign = 'left';
