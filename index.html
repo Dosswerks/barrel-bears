@@ -215,8 +215,8 @@ function initGame() {
         barrelY: H - 100,
         cubs: [],
         cubTimer: 0,
-        cubInterval: 80,
-        cubSpeed: 2,
+        cubInterval: 70,
+        cubSpeed: 2.5,
         cubRadius: 20,
         catchesThisLevel: 0,
         catchesNeeded: 10,
@@ -242,9 +242,9 @@ function dropCub() {
 
 function levelUp() {
     game.level++;
-    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.5, 8);
-    game.cubSpeed = Math.min(game.cubSpeed + 0.4, 9);
-    game.cubInterval = Math.max(game.cubInterval - 5, 25);
+    game.mamaBear.speed = Math.min(game.mamaBear.speed + 0.7, 9);
+    game.cubSpeed = Math.min(game.cubSpeed + 0.5, 10);
+    game.cubInterval = Math.max(game.cubInterval - 7, 20);
     game.catchesThisLevel = 0;
     game.catchesNeeded = 10 + game.level * 2;
     playSound('levelUp');
