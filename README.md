@@ -15,7 +15,9 @@ Catch enough cubs to advance to the next level, where Mama Bear moves faster, cu
 ## Controls
 
 - **Desktop**: Move the mouse left and right to position the barrel. Click to start. Press R to restart.
-- **Mobile**: Slide your finger left and right to move the barrel. Tap to start. Tap to restart after game over.
+- **Mobile**: Slide your finger on the canvas or the touch pad below it to move the barrel. Tap to start. Tap to restart after game over.
+
+On mobile devices, a wood-grain touch pad appears below the game canvas with directional arrows and a tracking indicator, giving you a larger control surface.
 
 ## Scoring
 
@@ -49,7 +51,13 @@ That is where you come in. Mama Bear needs your help to safely catch every cub b
 
 ### Architecture
 
-Barrel Bears is a single-file HTML5 Canvas game with no external dependencies. All game logic, rendering, audio management, and input handling are contained in one `index.html` file. It runs in any modern browser on desktop or mobile.
+Barrel Bears is a single-file HTML5 Canvas game. All game logic, rendering, audio management, and input handling are contained in one `index.html` file. It runs in any modern browser on desktop or mobile.
+
+The only external dependency is [qrcode-generator](https://github.com/nicolestandifer3/qrcode-generator-master) (v1.4.4, loaded via CDN) used to render a PayPal donation QR code in the footer.
+
+### Social Sharing
+
+The game includes Open Graph and Twitter Card meta tags for rich link previews when shared on social media, using the box art image as the preview.
 
 ### Development Process
 
@@ -67,9 +75,11 @@ The game was developed iteratively through conversational AI-assisted coding usi
    - Cub size doubled to 40x40 for better visibility
    - Speed and difficulty curves tuned across multiple iterations
    - Mobile touch controls added with pull-to-refresh prevention
+   - Dedicated mobile touch pad with wood-grain styling and track indicator
    - Splash screen with box art support and click/tap to start
    - Background music with start/stop on game events
    - Game border color matched to forest green theme
+   - Footer with story link, soundtrack link, tip jar, and QR code
 
 4. **Asset integration**: All graphics and sounds are loaded through a centralized `CUSTOM_ASSETS` configuration object. Each asset has a fallback -- if the file is missing, a default drawn graphic or no sound is used.
 
@@ -79,10 +89,13 @@ The game was developed iteratively through conversational AI-assisted coding usi
 
 - **Responsive layout**: Canvas scales to fit mobile screens with `100vw` width
 - **Touch and mouse input**: Mouse controls on desktop, touch slide on mobile, both coexist
+- **Mobile touch pad**: A dedicated control area below the canvas on small screens, styled with a wood-grain texture, directional arrows, and a circular tracking indicator
 - **Splash screen**: Supports custom box art that fills the game area, with instruction text overlaid
 - **Background music**: Loops during gameplay, stops on game over, restarts on new game
 - **Particle effects**: Splash particles on catch (blue) and miss (red) with fade-out
 - **Customizable assets**: Every visual and audio element can be replaced via the config object
+- **Social meta tags**: Open Graph and Twitter Card tags for rich sharing previews
+- **Tip jar**: PayPal donation button with an SVG tip jar illustration and a dynamically generated QR code
 
 ### Asset System
 
@@ -115,35 +128,59 @@ Set any value to `null` to use the default fallback.
 | Background | 640 x 480 px | PNG or JPG | Full canvas background |
 | Box Art | 640 x 480 px or similar | PNG or JPG | Splash screen |
 
+Keep all images under 100 KB each for fast loading.
+
 ### Sound Specs
 
 | Asset | Duration | Format | Notes |
 |---|---|---|---|
-| Catch | 0.1-0.3 sec | MP3 | Cub safely caught |
-| Miss | 0.3-0.5 sec | MP3 | Cub missed |
-| Level Up | 0.5-1.0 sec | MP3 | Level advance |
-| Game Over | 1.0-2.0 sec | MP3 | All barrels lost |
-| Music | 30-120 sec | MP3 | Loops continuously |
+| Catch | 0.1–0.3 sec | MP3 | Cub safely caught |
+| Miss | 0.3–0.5 sec | MP3 | Cub missed |
+| Level Up | 0.5–1.0 sec | MP3 | Level advance |
+| Game Over | 1.0–2.0 sec | MP3 | All barrels lost |
+| Music | 30–120 sec | MP3 | Loops continuously |
+
+Keep sound effects under 50 KB each. Background music under 2 MB. MP3 at 128 kbps is plenty.
 
 ### File Structure
 
 ```
 barrel-bears/
-  index.html
-  story.html
+  index.html              # Game (single-file app)
+  story.html              # Backstory and instructions page
   README.md
+  barrel-bears-asset-specs.rtf   # Original asset specification document
   assets/
-    bomber.png
-    bomb.png
-    barrel.png
-    background.png
-    box-art.png
+    bomber.png            # Mama Bear sprite
+    bomb.png              # Cub sprite
+    barrel.png            # Barrel sprite
+    background.png        # Full canvas background
+    box-art.png           # Splash screen art
     catch.mp3
     miss.mp3
     levelup.mp3
     gameover.mp3
     music.mp3
+  Barrel Bears stuff/     # Reference photos and inspiration images
 ```
+
+### Running Locally
+
+No build step required. Open `index.html` directly in a browser, or serve the folder with any static file server:
+
+```bash
+# Python
+python3 -m http.server 8000
+
+# Node (npx)
+npx serve .
+```
+
+A local server is recommended over opening the file directly so that audio and asset loading work reliably across browsers.
+
+### Browser Compatibility
+
+Tested in modern evergreen browsers (Chrome, Firefox, Safari, Edge). Requires HTML5 Canvas and the Web Audio API. No polyfills needed.
 
 ---
 
@@ -156,8 +193,14 @@ barrel-bears/
 
 ## Credits
 
-Concept, design, art direction, story, and audio: Andrew Doss
+Concept, design, art direction, story, and audio: [Andrew Doss](https://www.andrewdoss.com/)
+
+Wood-carved bear sculptures: [Michael Duke / Carvers on the Creek](https://www.facebook.com/carversonthecreek)
 
 Game engine and code: Built with Kiro AI-assisted development
 
 Hosted on GitHub Pages
+
+## License
+
+© 2026 Andrew Doss. All Rights Reserved.
