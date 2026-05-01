@@ -699,6 +699,14 @@ function draw() {
         ctx.font = 'bold 20px Arial, Helvetica, sans-serif';
         ctx.fillText(`Cubs Rescued: ${game.score}`, W / 2, H / 2 + 20);
         ctx.fillText('Tap or press R to restart', W / 2, H / 2 + 54);
+        // Tip jar QR on game over screen
+        if(qrImg){
+            var qrS=56,qrX=W/2-qrS/2,qrY=H/2+118;
+            ctx.fillStyle='#fff';ctx.font='bold 12px Arial';
+            ctx.fillText('Enjoying the game? Tips keep the games coming!',W/2,qrY-10);
+            ctx.fillStyle='#fff';ctx.fillRect(qrX-3,qrY-3,qrS+6,qrS+6);
+            ctx.drawImage(qrImg,qrX,qrY,qrS,qrS);
+        }
         ctx.textAlign = 'left';
     }
 }
@@ -838,12 +846,18 @@ init();
 </script>
 
 <script>
+var qrImg=null;
 (function(){
     var qr = qrcode(0, 'L');
     qr.addData('https://www.paypal.com/donate/?hosted_button_id=HDD77QKGC6XXN');
     qr.make();
     var el = document.getElementById('qr-code');
     if (el) el.innerHTML = qr.createSvgTag({cellSize:2, margin:0});
+    // Pre-render QR to image for canvas drawing
+    var svg=qr.createSvgTag({cellSize:3,margin:0});
+    var blob=new Blob([svg],{type:'image/svg+xml'});
+    var url=URL.createObjectURL(blob);
+    var i=new Image();i.onload=function(){qrImg=i;URL.revokeObjectURL(url);};i.src=url;
 })();
 </script>
 </body>
