@@ -110,35 +110,72 @@
         width: 640px;
         max-width: 100vw;
         height: 80px;
-        background: linear-gradient(180deg, #1a3a1a, #0d1f0d);
-        border: 2px solid #2d5a1e;
-        border-top: none;
+        background: linear-gradient(180deg, #8B5E3C 0%, #6B3F1F 30%, #7a4e2c 60%, #5a3015 100%);
+        border: 2px solid #4a2a0a;
+        border-top: 1px solid #a07050;
         touch-action: none;
         user-select: none;
         -webkit-user-select: none;
         position: relative;
         cursor: none;
+        overflow: hidden;
     }
-    #touch-pad::after {
-        content: '◀ SLIDE TO MOVE BARREL ▶';
+    /* Wood grain lines */
+    #touch-pad::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 18px,
+            rgba(0,0,0,0.08) 18px,
+            rgba(0,0,0,0.08) 19px
+        );
+        pointer-events: none;
+    }
+    #touch-pad .pad-label {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        color: rgba(212, 168, 67, 0.4);
-        font-size: 14px;
-        letter-spacing: 2px;
+        color: rgba(212, 168, 67, 0.6);
+        font-size: 13px;
+        font-weight: bold;
+        letter-spacing: 3px;
+        white-space: nowrap;
         pointer-events: none;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.1);
+    }
+    #touch-pad .arrow-left,
+    #touch-pad .arrow-right {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-top: 24px solid transparent;
+        border-bottom: 24px solid transparent;
+        pointer-events: none;
+        opacity: 0.4;
+    }
+    #touch-pad .arrow-left {
+        left: 12px;
+        border-right: 28px solid #4a2a0a;
+    }
+    #touch-pad .arrow-right {
+        right: 12px;
+        border-left: 28px solid #4a2a0a;
     }
     #touch-pad .track-indicator {
         position: absolute;
         top: 50%;
         transform: translate(-50%, -50%);
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(212,168,67,0.5), rgba(212,168,67,0.1));
-        border: 2px solid rgba(212,168,67,0.4);
+        background: radial-gradient(circle, rgba(212,168,67,0.45), rgba(139,94,60,0.2));
+        border: 2px solid rgba(212,168,67,0.35);
         pointer-events: none;
         display: none;
     }
@@ -210,7 +247,7 @@
         <p>Click or tap to start — Press R to restart</p>
     </div>
 </div>
-<div id="touch-pad"><div class="track-indicator"></div></div>
+<div id="touch-pad"><div class="arrow-left"></div><span class="pad-label">SLIDE TO MOVE BARREL</span><div class="arrow-right"></div><div class="track-indicator"></div></div>
 <div id="game-footer">
     <div class="footer-links">
         <a href="story.html" target="_blank">📖 READ THE STORY! 📖</a>
