@@ -361,8 +361,9 @@ function stopMusic() {
 
 function playSound(key) {
     if (sounds[key]) {
-        sounds[key].currentTime = 0;
-        sounds[key].play().catch(() => {});
+        const clone = sounds[key].cloneNode();
+        clone.volume = sounds[key].volume;
+        clone.play().catch(() => {});
     }
 }
 
