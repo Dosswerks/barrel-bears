@@ -101,6 +101,24 @@
     #start-screen.has-box-art p:last-child {
         bottom: 8px;
     }
+    @keyframes blink-text {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+    }
+    #start-screen .blink-prompt {
+        position: absolute;
+        bottom: 30px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: #fff;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        z-index: 12;
+        animation: blink-text 1s step-end infinite;
+        pointer-events: none;
+    }
     .has-box-art #splash-title { display: none; }
     .hidden { display: none !important; }
 
@@ -244,7 +262,8 @@
         </div>
         <h1 id="splash-title">BARREL BEARS</h1>
         <p>Move your mouse or finger to catch the falling cubs!</p>
-        <p>Click or tap to start — Press R to restart</p>
+        <p>Press R to restart</p>
+        <div class="blink-prompt">CLICK OR TAP TO START</div>
     </div>
 </div>
 <div id="touch-pad"><div class="arrow-left"></div><span class="pad-label">SLIDE TO MOVE BARREL</span><div class="arrow-right"></div><div class="track-indicator"></div></div>
@@ -360,6 +379,7 @@ function stopMusic() {
 }
 
 function playSound(key) {
+    if (attractMode) return;  // Silent during attract demo
     if (sounds[key]) {
         const clone = sounds[key].cloneNode();
         clone.volume = sounds[key].volume;
@@ -369,6 +389,59 @@ function playSound(key) {
 
 // Game state
 let game = {};
+
+// ---- ATTRACT MODE ----
+const ATTRACT_TITLE_DURATION = 480;  // ~8 seconds on title at 60fps
+const ATTRACT_DEMO_DURATION = 900;   // ~15 seconds of demo
+let attractMode = false;
+let attractTimer = ATTRACT_TITLE_DURATION;
+let attractDemoTimer = 0;
+let attractBreakFlag = false;  // set by real user input during demo
+
+function startAttractDemo() {
+    attractMode = true;
+    attractDemoTimer = ATTRACT_DEMO_DURATION;
+    attractBreakFlag = false;
+    // Hide the HTML start screen overlay, run game on canvas
+    startScreen.classList.add('hidden');
+    // Init a demo game — invincible, level 1
+    initGame();
+    game.running = true;
+    game.debugInvincible = true;
+    game.barrelX = W / 2;
+}
+
+function endAttractDemo() {
+    attractMode = false;
+    attractTimer = ATTRACT_TITLE_DURATION;
+    attractDemoTimer = 0;
+    // Stop game, show title screen again
+    stopMusic();
+    initGame();
+    startScreen.classList.remove('hidden');
+}
+
+function attractAI() {
+    // Chase the nearest falling cub's predicted landing X
+    let targetX = game.barrelX;
+    let bestTime = Infinity;
+    for (const cub of game.cubs) {
+        if (!cub.alive) continue;
+        const timeToBarrel = (game.barrelY - cub.y) / cub.speed;
+        if (timeToBarrel > 0 && timeToBarrel < bestTime) {
+            bestTime = timeToBarrel;
+            targetX = cub.x;
+        }
+    }
+    // Smoothly move barrel toward target
+    const dx = targetX - game.barrelX;
+    game.barrelX += dx * 0.12;
+    game.barrelX = Math.max(game.barrelWidth / 2, Math.min(W - game.barrelWidth / 2, game.barrelX));
+}
+
+function checkAttractBreak() {
+    return attractBreakFlag;
+}
 
 function initGame() {
     game = {
@@ -390,6 +463,7 @@ function initGame() {
         catchesThisLevel: 0,
         catchesNeeded: 10,
         splashes: [],
+        debugInvincible: false,
     };
     updateUI();
 }
@@ -477,15 +551,17 @@ function update() {
         // Check miss
         if (cy > H) {
             cub.alive = false;
-            game.lives--;
-            addSplash(cx, H - 10, '#ff4444');
-            playSound('miss');
-            updateUI();
+            if (!game.debugInvincible) {
+                game.lives--;
+                addSplash(cx, H - 10, '#ff4444');
+                playSound('miss');
+                updateUI();
 
-            if (game.lives <= 0) {
-                game.over = true;
-                stopMusic();
-                playSound('gameOver');
+                if (game.lives <= 0) {
+                    game.over = true;
+                    stopMusic();
+                    playSound('gameOver');
+                }
             }
         }
     }
@@ -712,16 +788,63 @@ function draw() {
 }
 
 function gameLoop() {
+    // Attract mode: title timer countdown
+    if (!game.running && !game.over && !attractMode) {
+        attractTimer--;
+        if (attractTimer <= 0) {
+            startAttractDemo();
+        }
+    }
+
+    // Attract mode: AI drives barrel, check break & demo timer
+    if (attractMode) {
+        if (checkAttractBreak()) {
+            endAttractDemo();
+        } else {
+            attractDemoTimer--;
+            if (attractDemoTimer <= 0) {
+                endAttractDemo();
+            } else {
+                attractAI();
+            }
+        }
+    }
+
     update();
     draw();
+
+    // Draw "CLICK OR TAP TO START" blinking text on title AND demo
+    if (!game.running && !game.over && !attractMode) {
+        // On the HTML start screen — handled by CSS/HTML, but also draw on canvas behind it
+    }
+    if (attractMode) {
+        const blink = Math.floor(Date.now() / 500) % 2;
+        if (blink) {
+            ctx.save();
+            ctx.font = 'bold 24px Arial, Helvetica, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 6;
+            ctx.fillText('CLICK OR TAP TO START', W / 2, H - 30);
+            ctx.restore();
+            ctx.textAlign = 'left';
+        }
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
 // Splash screen click/tap to start
 function startGame() {
+    if (attractMode) {
+        endAttractDemo();
+        // Fall through to start from title
+    }
     if (!game.running && !game.over) {
         game.running = true;
         startScreen.classList.add('hidden');
+        attractMode = false;
         startMusic();
     }
 }
@@ -734,11 +857,18 @@ startScreen.addEventListener('touchstart', e => {
 
 // Input
 canvas.addEventListener('mousemove', e => {
+    if (attractMode) { attractBreakFlag = true; return; }
     const rect = canvas.getBoundingClientRect();
     game.barrelX = (e.clientX - rect.left) * (W / rect.width);
 });
 
 canvas.addEventListener('click', () => {
+    if (attractMode) {
+        // Break demo, return to title, then start game
+        endAttractDemo();
+        startGame();
+        return;
+    }
     if (game.over) {
         initGame();
         game.running = true;
@@ -747,6 +877,7 @@ canvas.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', e => {
+    if (attractMode) { attractBreakFlag = true; return; }
     if (e.key === 'r' || e.key === 'R') {
         initGame();
         game.running = true;
@@ -758,6 +889,12 @@ document.addEventListener('keydown', e => {
 // Touch input
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (attractMode) {
+        // Break demo, return to title, then start game
+        endAttractDemo();
+        startGame();
+        return;
+    }
     if (game.over) {
         initGame();
         game.running = true;
@@ -815,6 +952,11 @@ const trackIndicator = touchPad.querySelector('.track-indicator');
 
 touchPad.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (attractMode) {
+        endAttractDemo();
+        startGame();
+        return;
+    }
     if (game.over) {
         initGame();
         game.running = true;
