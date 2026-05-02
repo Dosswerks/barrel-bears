@@ -359,21 +359,44 @@ function loadSound(key, src) {
 
 function loadMusic(src) {
     if (!src) return;
-    sounds.music = new Audio(src);
-    sounds.music.loop = true;
-    sounds.music.volume = 0.3;
+    // Web Audio API for gapless looping
+    music.src = src;
 }
 
-function startMusic() {
-    if (sounds.music && sounds.music.paused) {
-        sounds.music.play().catch(() => {});
-    }
+// Gapless music via Web Audio API
+const music = { ctx: null, buffer: null, source: null, src: null, playing: false, gain: null };
+
+async function _initMusicBuffer() {
+    if (music.buffer || !music.src) return;
+    try {
+        if (!music.ctx) music.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const resp = await fetch(music.src);
+        const arr = await resp.arrayBuffer();
+        music.buffer = await music.ctx.decodeAudioData(arr);
+        music.gain = music.ctx.createGain();
+        music.gain.gain.value = 0.3;
+        music.gain.connect(music.ctx.destination);
+    } catch (e) { /* fall back silently */ }
+}
+
+async function startMusic() {
+    await _initMusicBuffer();
+    if (!music.buffer || music.playing) return;
+    if (music.ctx.state === 'suspended') await music.ctx.resume();
+    const src = music.ctx.createBufferSource();
+    src.buffer = music.buffer;
+    src.loop = true;
+    src.connect(music.gain);
+    src.start(0);
+    music.source = src;
+    music.playing = true;
 }
 
 function stopMusic() {
-    if (sounds.music) {
-        sounds.music.pause();
-        sounds.music.currentTime = 0;
+    if (music.source && music.playing) {
+        try { music.source.stop(); } catch (e) {}
+        music.source = null;
+        music.playing = false;
     }
 }
 
